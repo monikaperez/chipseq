@@ -1011,6 +1011,7 @@ process PLOTPROFILE {
 process PHANTOMPEAKQUALTOOLS {
     tag "$name"
     label 'process_high'
+    disk '100 GB'
     publishDir "${params.outdir}/bwa/mergedLibrary/phantompeakqualtools", mode: params.publish_dir_mode
 
     when:
