@@ -1010,7 +1010,7 @@ process PLOTPROFILE {
  */
 process PHANTOMPEAKQUALTOOLS {
     tag "$name"
-    label 'process_medium'
+    label 'process_high'
     publishDir "${params.outdir}/bwa/mergedLibrary/phantompeakqualtools", mode: params.publish_dir_mode
 
     when:
