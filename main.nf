@@ -668,7 +668,7 @@ if (params.spiking){
         label 'process_medium'
 
         input:
-        tuple val(name), path(bam) from 
+        tuple val(name), path(bam) from ch_sort_bam_merge_2
 
         output:
         tuple val(name), file('*.txt') into counts_normal
