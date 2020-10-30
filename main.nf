@@ -644,7 +644,7 @@ process SORT_BAM {
     tuple val(name), path(bam) from ch_bwa_bam
 
     output:
-    tuple val(name), path('*.sorted.{bam,bam.bai}') into ch_sort_bam_merge; ch_sort_bam_merge_2
+    tuple val(name), path('*.sorted.{bam,bam.bai}') into ch_sort_bam_merge
     path '*.{flagstat,idxstats,stats}' into ch_sort_bam_flagstat_mqc;
 
     script:
@@ -658,6 +658,7 @@ process SORT_BAM {
     """
 }
 
+ch_sort_bam_merge.into(ch_sort_bam_merge_1, ch_sort_bam_merge_2)
 /*
  * STEP 3.2: Convert BAM to coordinate sorted BAM
  */
@@ -688,11 +689,11 @@ if (params.spiking){
 /*
  * STEP 4.1: Merge BAM files for all libraries from same sample replicate
  */
-ch_sort_bam_merge
+ch_sort_bam_merge_1
     .map { it -> [ it[0].split('_')[0..-2].join('_'), it[1] ] }
     .groupTuple(by: [0])
     .map { it ->  [ it[0], it[1].flatten() ] }
-    .set { ch_sort_bam_merge }
+    .set { ch_sort_bam_merge_1 }
 
 process MERGED_BAM {
     tag "$name"
@@ -707,7 +708,7 @@ process MERGED_BAM {
                 }
 
     input:
-    tuple val(name), path(bams) from ch_sort_bam_merge
+    tuple val(name), path(bams) from ch_sort_bam_merge_1
 
     output:
     tuple val(name), path("*${prefix}.sorted.{bam,bam.bai}") into ch_merge_bam_filter,
