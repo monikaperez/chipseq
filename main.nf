@@ -644,7 +644,7 @@ process SORT_BAM {
     tuple val(name), path(bam) from ch_bwa_bam
 
     output:
-    tuple val(name), path('*.sorted.{bam,bam.bai}') into ch_sort_bam_merge
+    tuple val(name), path('*.sorted.{bam,bam.bai}') into ch_sort_bam_merge; ch_sort_bam_counts
     path '*.{flagstat,idxstats,stats}' into ch_sort_bam_flagstat_mqc;
 
     script:
@@ -658,7 +658,6 @@ process SORT_BAM {
     """
 }
 
-Channel.from(ch_sort_bam_merge).into(ch_sort_bam_merge_1, ch_sort_bam_merge_2)
 /*
  * STEP 3.2: Convert BAM to coordinate sorted BAM
  */
@@ -668,7 +667,7 @@ if (params.spiking){
         label 'process_medium'
 
         input:
-        tuple val(name), path(bam) from ch_sort_bam_merge_2
+        tuple val(name), path(bam) from ch_sort_bam_counts
 
         output:
         tuple val(name), file('*.txt') into counts_normal
