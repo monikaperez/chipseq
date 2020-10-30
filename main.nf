@@ -710,8 +710,7 @@ process MERGED_BAM {
     tuple val(name), path(bams) from ch_sort_bam_merge
 
     output:
-    tuple val(name), path("*${prefix}.sorted.{bam,bam.bai}") 
-     ch_merge_bam_filter,
+    tuple val(name), path("*${prefix}.sorted.{bam,bam.bai}")  ch_merge_bam_filter,
                                                                   ch_merge_bam_preseq
     path '*.{flagstat,idxstats,stats}' into ch_merge_bam_stats_mqc
     path '*.txt' into ch_merge_bam_metrics_mqc
