@@ -658,7 +658,7 @@ process SORT_BAM {
     """
 }
 
-ch_sort_bam_merge.into(ch_sort_bam_merge_1, ch_sort_bam_merge_2)
+Channel.from(ch_sort_bam_merge).into(ch_sort_bam_merge_1, ch_sort_bam_merge_2)
 /*
  * STEP 3.2: Convert BAM to coordinate sorted BAM
  */
