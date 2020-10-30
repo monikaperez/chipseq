@@ -662,21 +662,21 @@ process SORT_BAM {
 /*
  * STEP 3.2: Convert BAM to coordinate sorted BAM
  */
-if (params.spiking){
-    process counts {
-        tag "$name"
-        label 'process_medium'
+process counts {
+    tag "$name"
+    label 'process_medium'
 
-        input:
-        tuple val(name), path(bam) from ch_sort_bam_counts
+    when: params.spiking
 
-        output:
-        tuple val(name), file('*.txt') into counts_normal
+    input:
+    tuple val(name), path(bam) from ch_sort_bam_counts
 
-        """
-        samtools view ${bam} -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}.txt
-        """
-    }
+    output:
+    tuple val(name), file('*.txt') into counts_normal
+
+    """
+    samtools view ${bam} -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}.txt
+    """
 }
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -1068,7 +1068,7 @@ process spiking {
     input:
     tuple val(name), path(reads) from ch_trimmed_reads
     path index from ch_spike_index.collect()
-    tuple val(name), file(counts) counts_normal
+    tuple val(name), file(counts) from counts_normal
 
     output:
     tuple val(name), path('*.bam') into spiking
