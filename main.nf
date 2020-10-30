@@ -132,7 +132,7 @@ params.gene_bed = params.genome ? params.genomes[ params.genome ].bed12 ?: false
 params.macs_gsize = params.genome ? params.genomes[ params.genome ].macs_gsize ?: false : false
 params.blacklist = params.genome ? params.genomes[ params.genome ].blacklist ?: false : false
 params.anno_readme = params.genome ? params.genomes[ params.genome ].readme ?: false : false
-
+params.spike_index = params.spike_genome ? params.genomes[ params.spike_genome ].bwa: false : false
 // Global variables
 def PEAK_TYPE = params.narrow_peak ? 'narrowPeak' : 'broadPeak'
 
@@ -187,6 +187,19 @@ if (params.bwa_index) {
     Channel
         .fromPath(bwa_dir, checkIfExists: true)
         .set { ch_bwa_index }
+}
+
+if (params.spiking) {
+    if (params.spike_index){
+        lastPath_spike = params.spike_index.substring(lastPath+1)
+        spike_dir = fparams.spike_index.substring(0,lastPath+1)
+        spike_base = params.spike_index.substring(lastPath+1)
+        Channel
+            .fromPath(spike_dir, checkIfExists: true)
+            .set { ch_spike_index }
+    } else {
+        exit 1, 'Fasta file not specified!'
+    }
 }
 
 // Save AWS IGenomes file containing annotation version
@@ -393,8 +406,10 @@ if (!params.bwa_index) {
         bwa index -a bwtsw $fasta
         mkdir BWAIndex && mv ${fasta}* BWAIndex
         """
+
     }
 }
+
 
 /*
  * PREPROCESSING: Generate gene BED file
@@ -1038,7 +1053,7 @@ process spiking {
 
     input:
     tuple val(name), path(reads) from ch_trimmed_reads
-    path index from ch_bwa_index.collect()
+    path index from ch_spike_index.collect()
     tuple val(name), file(counts) counts_normal
 
     output:
@@ -1058,7 +1073,7 @@ process spiking {
         -M \\
         -R $rg \\
         $score \\
-        ${index}/${bwa_droso} \\
+        ${index}/${params.spike_base} \\
         $reads \\
         | samtools sort -@ $task.cpus -b -h -o ${prefix}.bam -
     samtools ${prefix}.bam -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}_counts.txt
