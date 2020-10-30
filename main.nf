@@ -191,7 +191,7 @@ if (params.bwa_index) {
 
 if (params.spiking) {
     if (params.spike_index){
-        lastPath_spike = params.spike_index.lastIndexOf(File.separator)
+        lastPath = params.spike_index.lastIndexOf(File.separator)
         spike_dir = params.spike_index.substring(0,lastPath+1)
         spike_base = params.spike_index.substring(lastPath+1)
         Channel
