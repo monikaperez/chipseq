@@ -646,7 +646,6 @@ process SORT_BAM {
     output:
     tuple val(name), path('*.sorted.{bam,bam.bai}') into ch_sort_bam_merge
     path '*.{flagstat,idxstats,stats}' into ch_sort_bam_flagstat_mqc
-    tuple val(name), file('*.txt') optional true into counts_normal
 
     script:
     prefix = "${name}.Lb"
@@ -657,11 +656,6 @@ process SORT_BAM {
     samtools idxstats ${prefix}.sorted.bam > ${prefix}.sorted.bam.idxstats
     samtools stats ${prefix}.sorted.bam > ${prefix}.sorted.bam.stats
     """
-    if (params.spiking) {
-        """
-        samtools view ${prefix}.sorted.bam -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${prefix}.txt
-        """
-    }
 }
 
 /*
