@@ -689,11 +689,11 @@ if (params.spiking){
 /*
  * STEP 4.1: Merge BAM files for all libraries from same sample replicate
  */
-ch_sort_bam_merge_1
+ch_sort_bam_merge
     .map { it -> [ it[0].split('_')[0..-2].join('_'), it[1] ] }
     .groupTuple(by: [0])
     .map { it ->  [ it[0], it[1].flatten() ] }
-    .set { ch_sort_bam_merge_1 }
+    .set { ch_sort_bam_merge }
 
 process MERGED_BAM {
     tag "$name"
@@ -708,7 +708,7 @@ process MERGED_BAM {
                 }
 
     input:
-    tuple val(name), path(bams) from ch_sort_bam_merge_1
+    tuple val(name), path(bams) from ch_sort_bam_merge
 
     output:
     tuple val(name), path("*${prefix}.sorted.{bam,bam.bai}") into ch_merge_bam_filter,
