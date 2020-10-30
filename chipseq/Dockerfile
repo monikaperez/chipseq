@@ -15,3 +15,4 @@ RUN conda env export --name nf-core-chipseq-1.2.1 > nf-core-chipseq-1.2.1.yml
 # Instruct R processes to use these empty files instead of clashing with a local version
 RUN touch .Rprofile
 RUN touch .Renviron
+RUN apt install bc

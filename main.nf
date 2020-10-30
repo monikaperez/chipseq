@@ -349,6 +349,13 @@ if (params.single_end) {
                 ch_raw_reads_trimgalore }
 }
 
+// two names for two conditions. if same group, same antibody, condition DMSO, y 
+// ch_design_reads_csv
+//         .splitCsv(header:true, sep:',')
+//         .map { row -> [ row.sample_id, [ file(row.fastq_1, checkIfExists: true) ] ] }
+//         .into { ch_raw_reads_fastqc;
+//                 ch_raw_reads_trimgalore }
+
 /*
  * Create a channel with [sample_id, control id, antibody, replicatesExist, multipleGroups]
  */
@@ -624,6 +631,7 @@ process SORT_BAM {
     output:
     tuple val(name), path('*.sorted.{bam,bam.bai}') into ch_sort_bam_merge
     path '*.{flagstat,idxstats,stats}' into ch_sort_bam_flagstat_mqc
+    tuple val(name), file('*.txt') optional true into counts_normal
 
     script:
     prefix = "${name}.Lb"
@@ -634,6 +642,11 @@ process SORT_BAM {
     samtools idxstats ${prefix}.sorted.bam > ${prefix}.sorted.bam.idxstats
     samtools stats ${prefix}.sorted.bam > ${prefix}.sorted.bam.stats
     """
+    if (params.spiking) {
+        """
+        samtools view ${prefix}.sorted.bam -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${prefix}.txt
+        """
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -753,6 +766,7 @@ process MERGED_BAM_FILTER {
     tuple val(name), path('*.{bam,bam.bai}') into ch_filter_bam
     tuple val(name), path('*.flagstat') into ch_filter_bam_flagstat
     path '*.{idxstats,stats}' into ch_filter_bam_stats_mqc
+    tuple val(name), path('')
 
     script:
     prefix = params.single_end ? "${name}.mLb.clN" : "${name}.mLb.flT"
@@ -1006,6 +1020,55 @@ process PLOTPROFILE {
 }
 
 /*
+ * STEP 5.5: align again to drosophila genome
+ */    
+process spiking {
+    tag "$name"
+    label 'process_high'
+    publishDir "${params.outdir}/droso_aligned/", mode: params.publish_dir_mode,
+        saveAs: { filename ->
+                      if (filename.endsWith('.bam')) "bam/$filename"
+                      else if (filename.endsWith('_counts.txt')) "counts/$filename"
+                      else if (filename.endsWith('_scale.txt')) "scale/$filename"
+                      else filename
+                }
+
+    when:
+    params.spiking
+
+    input:
+    tuple val(name), path(reads) from ch_trimmed_reads
+    path index from ch_bwa_index.collect()
+    tuple val(name), file(counts) counts_normal
+
+    output:
+    tuple val(name), path('*.bam') into spiking
+    tuple val(name), path('*.txt') into scalespike
+
+    script:
+    prefix = "${name}.Lb"
+    rg = "\'@RG\\tID:${name}\\tSM:${name.split('_')[0..-2].join('_')}\\tPL:ILLUMINA\\tLB:${name}\\tPU:1\'"
+    if (params.seq_center) {
+        rg = "\'@RG\\tID:${name}\\tSM:${name.split('_')[0..-2].join('_')}\\tPL:ILLUMINA\\tLB:${name}\\tPU:1\\tCN:${params.seq_center}\'"
+    }
+    score = params.bwa_min_score ? "-T ${params.bwa_min_score}" : ''
+    """
+    bwa mem \\
+        -t $task.cpus \\
+        -M \\
+        -R $rg \\
+        $score \\
+        ${index}/${bwa_droso} \\
+        $reads \\
+        | samtools sort -@ $task.cpus -b -h -o ${prefix}.bam -
+    samtools ${prefix}.bam -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}_counts.txt
+    hum=\$(cat ${counts})
+    dro=\$(cat ${name}_counts.txt)
+    echo \$(bc <<< "scale=8; "\$dros"/("\$hum+\$dros")") >> ${name}_scaling.txt;
+    """
+}
+
+/*
  * STEP 5.5: Phantompeakqualtools
  */
 process PHANTOMPEAKQUALTOOLS {
@@ -1029,15 +1092,10 @@ process PHANTOMPEAKQUALTOOLS {
 
     script:
     """
-    free
-    lsblk
     RUN_SPP=`which run_spp.R`
     Rscript -e "library(caTools); source(\\"\$RUN_SPP\\")" -c="${bam[0]}" -savp="${name}.spp.pdf" -savd="${name}.spp.Rdata" -out="${name}.spp.out" -p=$task.cpus
     cp $spp_correlation_header ${name}_spp_correlation_mqc.tsv
-    free
     Rscript -e "load('${name}.spp.Rdata'); write.table(crosscorr\\\$cross.correlation, file=\\"${name}_spp_correlation_mqc.tsv\\", sep=",", quote=FALSE, row.names=FALSE, col.names=FALSE,append=TRUE)"
-    free
-    du -sch
     awk -v OFS='\t' '{print "${name}", \$9}' ${name}.spp.out | cat $spp_nsc_header - > ${name}_spp_nsc_mqc.tsv
     awk -v OFS='\t' '{print "${name}", \$10}' ${name}.spp.out | cat $spp_rsc_header - > ${name}_spp_rsc_mqc.tsv
     """
