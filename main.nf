@@ -662,12 +662,15 @@ process SORT_BAM {
  * STEP 3.2: Convert BAM to coordinate sorted BAM
  */
 if (params.spiking){
+    Channel
+        .from(ch_sort_bam_merge)
+        .into{ ch_sort_bam_merge; ch_sort_bam_merge_2 }
     process counts {
         tag "$name"
         label 'process_medium'
 
         input:
-        tuple val(name), path(bam) from ch_sort_bam_merge
+        tuple val(name), path(bam) from ch_sort_bam_merge_2
 
         output:
         tuple val(name), file('*.txt') into counts_normal
