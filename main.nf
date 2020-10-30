@@ -527,6 +527,7 @@ process FASTQC {
  */
 if (params.skip_trimming) {
     ch_trimmed_reads = ch_raw_reads_trimgalore
+    ch_trimmed_spikes = ch_raw_reads_trimgalore
     ch_trimgalore_results_mqc = Channel.empty()
     ch_trimgalore_fastqc_reports_mqc = Channel.empty()
 } else {
@@ -545,7 +546,8 @@ if (params.skip_trimming) {
         tuple val(name), path(reads) from ch_raw_reads_trimgalore
 
         output:
-        tuple val(name), path('*.fq.gz') into ch_trimmed_reads
+        tuple val(name), path('*.fq.gz') into ch_trimmed_reads, 
+                                                ch_trimmed_spikes
         path '*.txt' into ch_trimgalore_results_mqc
         path '*.{zip,html}' into ch_trimgalore_fastqc_reports_mqc
 
@@ -1066,7 +1068,7 @@ process spiking {
     params.spiking
 
     input:
-    tuple val(name), path(reads) from ch_trimmed_reads
+    tuple val(name), path(reads) from ch_trimmed_spikes
     path index from ch_spike_index.collect()
     tuple val(name), file(counts) from counts_normal
 
