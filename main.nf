@@ -664,6 +664,26 @@ process SORT_BAM {
     }
 }
 
+/*
+ * STEP 3.2: Convert BAM to coordinate sorted BAM
+ */
+if (params.spiking){
+    process counts {
+        tag "$name"
+        label 'process_medium'
+
+        input:
+        tuple val(name), path(bam) from ch_bwa_bam
+
+        output:
+        tuple val(name), file('*.txt') into counts_normal
+
+        """
+        samtools view ${bam} -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}.txt
+        """
+        }
+    }
+}
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 /* --                                                                     -- */
