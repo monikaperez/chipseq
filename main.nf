@@ -132,7 +132,7 @@ params.gene_bed = params.genome ? params.genomes[ params.genome ].bed12 ?: false
 params.macs_gsize = params.genome ? params.genomes[ params.genome ].macs_gsize ?: false : false
 params.blacklist = params.genome ? params.genomes[ params.genome ].blacklist ?: false : false
 params.anno_readme = params.genome ? params.genomes[ params.genome ].readme ?: false : false
-params.spike_index = params.spiking ? params.genomes[ params.spiking ].bwa ?: false : false
+params.spike_index = params.spiking ? params.genomes[ params.spike_genome ].bwa ?: false : false
 // Global variables
 def PEAK_TYPE = params.narrow_peak ? 'narrowPeak' : 'broadPeak'
 
