@@ -132,7 +132,7 @@ params.gene_bed = params.genome ? params.genomes[ params.genome ].bed12 ?: false
 params.macs_gsize = params.genome ? params.genomes[ params.genome ].macs_gsize ?: false : false
 params.blacklist = params.genome ? params.genomes[ params.genome ].blacklist ?: false : false
 params.anno_readme = params.genome ? params.genomes[ params.genome ].readme ?: false : false
-params.spike_index = params.spike_genome ? params.genomes[ params.spike_genome ].bwa ?: false : false
+params.spike_index = params.spiking ? params.genomes[ params.spiking ].bwa ?: false : false
 // Global variables
 def PEAK_TYPE = params.narrow_peak ? 'narrowPeak' : 'broadPeak'
 
@@ -189,17 +189,13 @@ if (params.bwa_index) {
         .set { ch_bwa_index }
 }
 
-if (params.spiking) {
-    if (params.spike_index){
-        lastPath = params.spike_index.lastIndexOf(File.separator)
-        spike_dir = params.spike_index.substring(0,lastPath+1)
-        spike_base = params.spike_index.substring(lastPath+1)
-        Channel
-            .fromPath(spike_dir, checkIfExists: true)
-            .set { ch_spike_index }
-    } else {
-        exit 1, 'Fasta file not specified!'
-    }
+if (params.spike_index){
+    lastPath = params.spike_index.lastIndexOf(File.separator)
+    spike_dir = params.spike_index.substring(0,lastPath+1)
+    spike_base = params.spike_index.substring(lastPath+1)
+    Channel
+        .fromPath(spike_dir, checkIfExists: true)
+        .set { ch_spike_index }
 }
 
 // Save AWS IGenomes file containing annotation version
@@ -664,7 +660,7 @@ process SORT_BAM {
 /*
  * STEP 3.2: Convert BAM to coordinate sorted BAM
  */
-process counts {
+process COUNTS {
     tag "$name"
     label 'process_medium'
 
@@ -1089,10 +1085,10 @@ process spiking {
         -M \\
         -R $rg \\
         $score \\
-        ${index}/${params.spike_base} \\
+        ${index}/${spike_base} \\
         $reads \\
-        | samtools sort -@ $task.cpus -b -h -o ${prefix}.bam -
-    samtools ${prefix}.bam -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}_counts.txt
+        | samtools sort -@ $task.cpus -o ${prefix}.bam -
+    samtools view ${prefix}.bam -@ $task.cpus -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}_counts.txt
     hum=\$(cat ${counts})
     dro=\$(cat ${name}_counts.txt)
     echo \$(bc <<< "scale=8; "\$dros"/("\$hum+\$dros")") >> ${name}_scaling.txt;
