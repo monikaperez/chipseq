@@ -1055,50 +1055,52 @@ process PLOTPROFILE {
 /*
  * STEP 5.5: align again to drosophila genome
  */    
-process spiking {
-    tag "$name"
-    label 'process_high'
-    publishDir "${params.outdir}/droso_aligned/", mode: params.publish_dir_mode,
-        saveAs: { filename ->
-                      if (filename.endsWith('.bam')) "bam/$filename"
-                      else if (filename.endsWith('_counts.txt')) "counts/$filename"
-                      else if (filename.endsWith('_scaling.txt')) "scale/$filename"
-                      else filename
-                }
+if(params.spiking){
+    process spiking {
+        tag "$name"
+        label 'process_high'
+        publishDir "${params.outdir}/droso_aligned/", mode: params.publish_dir_mode,
+            saveAs: { filename ->
+                        if (filename.endsWith('.bam')) "bam/$filename"
+                        else if (filename.endsWith('_counts.txt')) "counts/$filename"
+                        else if (filename.endsWith('_scaling.txt')) "scale/$filename"
+                        else filename
+                    }
 
-    when:
-    params.spiking
+        when:
+        params.spiking
 
-    input:
-    tuple val(name), path(reads) from ch_trimmed_spikes
-    path index from ch_spike_index.collect()
-    tuple val(name), file(counts) from counts_normal
+        input:
+        tuple val(name), path(reads) from ch_trimmed_spikes
+        path index from ch_spike_index.collect()
+        tuple val(name), file(counts) from counts_normal
 
-    output:
-    tuple val(name), path('*.bam') into spiking
-    tuple val(name), path('*.txt') into scalespike
+        output:
+        tuple val(name), path('*.bam') into spiking
+        tuple val(name), path('*.txt') into scalespike
 
-    script:
-    prefix = "${name}.Lb"
-    rg = "\'@RG\\tID:${name}\\tSM:${name.split('_')[0..-2].join('_')}\\tPL:ILLUMINA\\tLB:${name}\\tPU:1\'"
-    if (params.seq_center) {
-        rg = "\'@RG\\tID:${name}\\tSM:${name.split('_')[0..-2].join('_')}\\tPL:ILLUMINA\\tLB:${name}\\tPU:1\\tCN:${params.seq_center}\'"
+        script:
+        prefix = "${name}.Lb"
+        rg = "\'@RG\\tID:${name}\\tSM:${name.split('_')[0..-2].join('_')}\\tPL:ILLUMINA\\tLB:${name}\\tPU:1\'"
+        if (params.seq_center) {
+            rg = "\'@RG\\tID:${name}\\tSM:${name.split('_')[0..-2].join('_')}\\tPL:ILLUMINA\\tLB:${name}\\tPU:1\\tCN:${params.seq_center}\'"
+        }
+        score = params.bwa_min_score ? "-T ${params.bwa_min_score}" : ''
+        """
+        bwa mem \\
+            -t $task.cpus \\
+            -M \\
+            -R $rg \\
+            $score \\
+            ${index}/${spike_base} \\
+            $reads \\
+            | samtools sort -@ $task.cpus -o ${prefix}.bam -
+        samtools view ${prefix}.bam -@ $task.cpus -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}_counts.txt
+        hum=\$(cat ${counts})
+        dro=\$(cat ${name}_counts.txt)
+        echo \$(bc <<< "scale=8; "\$dro"/("\$hum+\$dro")") >> ${name}_scaling.txt;
+        """
     }
-    score = params.bwa_min_score ? "-T ${params.bwa_min_score}" : ''
-    """
-    bwa mem \\
-        -t $task.cpus \\
-        -M \\
-        -R $rg \\
-        $score \\
-        ${index}/${spike_base} \\
-        $reads \\
-        | samtools sort -@ $task.cpus -o ${prefix}.bam -
-    samtools view ${prefix}.bam -@ $task.cpus -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}_counts.txt
-    hum=\$(cat ${counts})
-    dro=\$(cat ${name}_counts.txt)
-    echo \$(bc <<< "scale=8; "\$dro"/("\$hum+\$dro")") >> ${name}_scaling.txt;
-    """
 }
 
 /*
