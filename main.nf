@@ -666,6 +666,12 @@ process COUNTS {
 
     when: params.spiking
 
+    publishDir "${params.outdir}/bwa/mergedLibrary/", mode: params.publish_dir_mode,
+        saveAs: { filename ->
+                      if (filename.endsWith('.txt')) "counts/$filename"
+                      else filename
+                }
+
     input:
     tuple val(name), path(bam) from ch_sort_bam_counts
 
@@ -673,7 +679,7 @@ process COUNTS {
     tuple val(name), file('*.txt') into counts_normal
 
     """
-    samtools view ${bam} -@ $task.cpus view -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}.txt
+    samtools view ${bam} -@ $task.cpus -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}.txt
     """
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -1056,7 +1062,7 @@ process spiking {
         saveAs: { filename ->
                       if (filename.endsWith('.bam')) "bam/$filename"
                       else if (filename.endsWith('_counts.txt')) "counts/$filename"
-                      else if (filename.endsWith('_scale.txt')) "scale/$filename"
+                      else if (filename.endsWith('_scaling.txt')) "scale/$filename"
                       else filename
                 }
 
@@ -1091,7 +1097,7 @@ process spiking {
     samtools view ${prefix}.bam -@ $task.cpus -c -F 0x004 -F 0x0008 -f 0x001 -F 0x0400 -F 0x0100 > ${name}_counts.txt
     hum=\$(cat ${counts})
     dro=\$(cat ${name}_counts.txt)
-    echo \$(bc <<< "scale=8; "\$dros"/("\$hum+\$dros")") >> ${name}_scaling.txt;
+    echo \$(bc <<< "scale=8; "\$dro"/("\$hum+\$dro")") >> ${name}_scaling.txt;
     """
 }
 
